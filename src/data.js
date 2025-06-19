@@ -1,4 +1,4 @@
-const questionData = [
+[
   {
     section_id: 1,
     section_name: "Technical Background & Skills",
@@ -939,5 +939,3 @@ const questionData = [
     ],
   },
 ];
-
-export default questionData;
