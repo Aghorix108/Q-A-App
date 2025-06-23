@@ -61,37 +61,18 @@ function Assessment() {
     );
   };
 
+  // Update the handleAnswerSelect function with debug logging
   const handleAnswerSelect = (questionId, optionId) => {
+    console.log(`Selected option ${optionId} for question ${questionId}`);
+
+    // Simple direct object update with the new selection
     setSelectedOptions((prev) => {
-      const question = questionData
-        .flatMap((section) => section.questions)
-        .find((q) => q.question_id === questionId);
-
-      // If it's a multi-select question
-      if (question && isMultiSelectQuestion(question.question_text)) {
-        // Ensure we have an array to work with
-        const currentSelections = Array.isArray(prev[questionId])
-          ? prev[questionId]
-          : prev[questionId]
-          ? [prev[questionId]]
-          : [];
-
-        // If already selected, remove it; otherwise, add it
-        const newSelections = currentSelections.includes(optionId)
-          ? currentSelections.filter((id) => id !== optionId)
-          : [...currentSelections, optionId];
-
-        return {
-          ...prev,
-          [questionId]: newSelections,
-        };
-      }
-
-      // Single select question
-      return {
+      const newSelections = {
         ...prev,
         [questionId]: optionId,
       };
+      console.log("Updated selections:", newSelections);
+      return newSelections;
     });
   };
 
@@ -103,26 +84,37 @@ function Assessment() {
 
     questionData.forEach((section) => {
       const sectionQuestionIds = section.questions.map((q) => q.question_id);
+
+      // Debug log for questions in this section
+      console.log(
+        `Checking completion for section ${section.section_id}:`,
+        sectionQuestionIds
+      );
+      console.log("Current selections:", selectedOptions);
+
       const isComplete = sectionQuestionIds.every((qId) => {
-        const selections = selectedOptions[qId];
-
-        // Handle multi-select questions
-        const question = section.questions.find((q) => q.question_id === qId);
-        if (question && isMultiSelectQuestion(question.question_text)) {
-          return selections && selections.length > 0;
-        }
-
-        // Handle single-select questions
-        return selections !== undefined;
+        // Explicitly check for existence of the question ID in the selections
+        const hasAnswer = selectedOptions[qId] !== undefined;
+        console.log(
+          `Question ${qId}: ${
+            hasAnswer ? "answered" : "not answered"
+          }`
+        );
+        return hasAnswer;
       });
 
+      console.log(`Section ${section.section_id} complete:`, isComplete);
       newSectionCompletion[section.section_id] = isComplete;
     });
 
+    console.log("New section completion status:", newSectionCompletion);
     setSectionCompletion(newSectionCompletion);
   }, [selectedOptions, questionData]);
 
   const handleNextSection = () => {
+    console.log("Current section complete:", currentSectionComplete);
+    console.log("Current section:", currentSection);
+
     if (currentSectionIndex < questionData.length - 1) {
       setCurrentSectionIndex((prevIndex) => prevIndex + 1);
       window.scrollTo(0, 0);
@@ -136,21 +128,17 @@ function Assessment() {
     }
   };
 
+  // When submitting, ensure we're formatting the data correctly
   const handleFinalSubmit = async () => {
     try {
       setLoading(true);
 
-      // Prepare answers object
+      // Format answers for the API
       const finalAnswers = Object.entries(selectedOptions).map(
-        ([questionId, optionIds]) => {
-          // Convert to array format for consistency
-          const selectedOptionIds = Array.isArray(optionIds)
-            ? optionIds
-            : [optionIds];
-
+        ([questionId, optionId]) => {
           return {
             question_id: parseInt(questionId),
-            selected_option_ids: selectedOptionIds,
+            selected_option_id: optionId,
           };
         }
       );
@@ -476,7 +464,7 @@ function Assessment() {
                   whileHover={currentSectionComplete ? { scale: 1.03 } : {}}
                   whileTap={currentSectionComplete ? { scale: 0.98 } : {}}
                 >
-                  Next →
+                  {currentSectionComplete ? "Next →" : "Please answer all questions →"}
                 </motion.button>
               ) : (
                 <motion.button
@@ -502,3 +490,4 @@ function Assessment() {
 }
 
 export default Assessment;
+
