@@ -1,7 +1,15 @@
+import React from 'react';
 import { motion } from 'framer-motion';
 import McqQuestion from './McqQuestion';
 
 const SectionContainer = ({ section, onAnswerSelect, selectedOptions }) => {
+  // Add debug logging
+  console.log("Rendering SectionContainer", {
+    sectionId: section.section_id,
+    questions: section.questions,
+    selectedOptions
+  });
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
