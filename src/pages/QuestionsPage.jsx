@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { decryptData } from '../utils/decryptionHelper';
 import { updateQuestion } from '../api/questions';
 import toast, { Toaster } from 'react-hot-toast';
+import CryptoJS from 'crypto-js';
+import { section } from 'framer-motion/client';
 
 // EditQuestionModal component
 function EditQuestionModal({ open, question, onClose, onSave }) {
@@ -209,9 +211,11 @@ function AddSectionModal({ open, onClose, onAdd }) {
   const [error, setError] = useState('');
   const [loadingExams, setLoadingExams] = useState(false);
   const [examApiError, setExamApiError] = useState('');
+  const [adding, setAdding] = useState(false); // <-- for API loading state
 
   const isOther = exam === 'Other';
-  const isAddDisabled = !sectionName.trim() || !exam || (isOther && !customExam.trim()) || !description.trim();
+  // Only require sectionName and exam (not description)
+  const isAddDisabled = !sectionName.trim() || !exam || (isOther && !customExam.trim());
 
   useEffect(() => {
     if (open) {
@@ -247,20 +251,58 @@ function AddSectionModal({ open, onClose, onAdd }) {
     }
   }, [open]);
 
-  const handleAdd = () => {
-    if (!exam || (isOther && !customExam.trim()) || !sectionName.trim() || !description.trim()) {
-      setError('Please fill all fields');
+  const handleAdd = async () => {
+    if (!exam || (isOther && !customExam.trim()) || !sectionName.trim()) {
+      setError('Please fill all required fields');
       return;
     }
-    const examName = isOther ? customExam.trim() : exam;
-    // You may want to store description as part of section object, here it's appended for demo
-    onAdd(`${examName} - ${sectionName.trim()}${description ? ` (${description.trim()})` : ''}`);
-    setSectionName('');
-    setCustomExam('');
-    setExam('');
-    setDescription('');
+    setAdding(true);
     setError('');
-    onClose();
+    const examName = isOther ? customExam.trim() : exam;
+    try {
+      const SECRET_KEY = import.meta.env.VITE_SECRET_KEY;
+      const payload = {
+        name: sectionName.trim(),
+        description: description.trim() || null,
+        exam_name: examName
+      };
+      const encryptedData = CryptoJS.AES.encrypt(
+        JSON.stringify(payload),
+        SECRET_KEY
+      ).toString();
+
+      const token = localStorage.getItem('adminToken');
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/admin/add-section`,
+        { data: encryptedData },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // Success: show toast, call onAdd, refresh questions, close modal
+      if (res.data && res.data.message) {
+        toast.success(res.data.message);
+        onAdd(`${examName} - ${sectionName.trim()}${description ? ` (${description.trim()})` : ''}`);
+        // Call questions API by triggering parent refresh (like question add)
+        if (typeof window !== "undefined") {
+          // Optionally, you can trigger a refresh via a callback or event
+        }
+        onClose();
+      } else {
+        setError('Unexpected response from server');
+      }
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+        'Failed to add section'
+      );
+    } finally {
+      setAdding(false);
+    }
   };
 
   if (!open) return null;
@@ -284,85 +326,97 @@ function AddSectionModal({ open, onClose, onAdd }) {
           exit={{ scale: 0.8, opacity: 0, y: 40 }}
           transition={{ type: "spring", stiffness: 300, damping: 25 }}
         >
-          <button
-            className="absolute top-3 right-4 text-gray-600 hover:text-gray-900 text-2xl font-bold cursor-pointer"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ background: "none", border: "none" }}
-          >
-            &times;
-          </button>
-          <div className="p-8">
-            <div className="text-center font-bold text-blue-700 text-lg uppercase tracking-wider mb-6">
-              Add New Section
-            </div>
-            <div className="mb-4">
-              <label className="block text-gray-700 font-semibold mb-2">Exam Name</label>
-              {loadingExams ? (
-                <div className="text-gray-500 text-sm py-2">Loading exams...</div>
-              ) : (
-                <select
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none transition"
-                  value={exam}
-                  onChange={e => setExam(e.target.value)}
-                >
-                  <option value="">Select Exam</option>
-                  {examNames.map(name => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                </select>
-              )}
-              {examApiError && (
-                <div className="text-red-500 text-xs mt-2">{examApiError}</div>
-              )}
-            </div>
-            {isOther && (
+          {/* Add a form wrapper ONLY if you need it, and always prevent default submit */}
+          <form onSubmit={e => e.preventDefault()}>
+            <button
+              className="absolute top-3 right-4 text-gray-600 hover:text-gray-900 text-2xl font-bold cursor-pointer"
+              onClick={onClose}
+              aria-label="Close"
+              style={{ background: "none", border: "none" }}
+              disabled={adding}
+              type="button"
+            >
+              &times;
+            </button>
+            <div className="p-8">
+              <div className="text-center font-bold text-blue-700 text-lg uppercase tracking-wider mb-6">
+                Add New Section
+              </div>
               <div className="mb-4">
+                <label className="block text-gray-700 font-semibold mb-2">Exam Name</label>
+                {loadingExams ? (
+                  <div className="text-gray-500 text-sm py-2">Loading exams...</div>
+                ) : (
+                  <select
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none transition"
+                    value={exam}
+                    onChange={e => setExam(e.target.value)}
+                    disabled={adding}
+                  >
+                    <option value="">Select Exam</option>
+                    {examNames.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                )}
+                {examApiError && (
+                  <div className="text-red-500 text-xs mt-2">{examApiError}</div>
+                )}
+              </div>
+              {isOther && (
+                <div className="mb-4">
+                  <input
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none transition"
+                    placeholder="Enter Exam Name"
+                    value={customExam}
+                    onChange={e => setCustomExam(e.target.value)}
+                    autoFocus
+                    disabled={adding}
+                  />
+                </div>
+              )}
+              <div className="mb-4">
+                <label className="block text-gray-700 font-semibold mb-2">Section Name</label>
                 <input
                   className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none transition"
-                  placeholder="Enter Exam Name"
-                  value={customExam}
-                  onChange={e => setCustomExam(e.target.value)}
-                  autoFocus
+                  placeholder="Section Name"
+                  value={sectionName}
+                  onChange={e => setSectionName(e.target.value)}
+                  disabled={adding}
                 />
               </div>
-            )}
-            <div className="mb-4">
-              <label className="block text-gray-700 font-semibold mb-2">Section Name</label>
-              <input
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none transition"
-                placeholder="Section Name"
-                value={sectionName}
-                onChange={e => setSectionName(e.target.value)}
-              />
+              <div className="mb-4">
+                <label className="block text-gray-700 font-semibold mb-2">Description</label>
+                <textarea
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none transition resize-none"
+                  placeholder="Section Description"
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  rows={2}
+                  disabled={adding}
+                />
+              </div>
+              {error && <div className="text-red-500 text-xs mt-2">{error}</div>}
+              <div className="flex justify-end mt-8 gap-3">
+                <button
+                  className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold shadow hover:bg-gray-300 transition cursor-pointer"
+                  onClick={onClose}
+                  disabled={adding}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  className={`px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition ${isAddDisabled || adding ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  onClick={handleAdd}
+                  disabled={isAddDisabled || adding}
+                  type="button"
+                >
+                  {adding ? 'Adding...' : 'Add'}
+                </button>
+              </div>
             </div>
-            <div className="mb-4">
-              <label className="block text-gray-700 font-semibold mb-2">Description</label>
-              <textarea
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none transition resize-none"
-                placeholder="Section Description"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                rows={2}
-              />
-            </div>
-            {error && <div className="text-red-500 text-xs mt-2">{error}</div>}
-            <div className="flex justify-end mt-8 gap-3">
-              <button
-                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold shadow hover:bg-gray-300 transition cursor-pointer"
-                onClick={onClose}
-              >
-                Cancel
-              </button>
-              <button
-                className={`px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition ${isAddDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                onClick={handleAdd}
-                disabled={isAddDisabled}
-              >
-                Add
-              </button>
-            </div>
-          </div>
+          </form>
         </motion.div>
       </motion.div>
     </AnimatePresence>
@@ -370,25 +424,47 @@ function AddSectionModal({ open, onClose, onAdd }) {
 }
 
 // --- Add Question Modal ---
-function AddQuestionModal({ open, sections, onClose, onAdd }) {
+function AddQuestionModal({ open, onClose, onAdd }) {
+  const [sections, setSections] = useState([]);
   const [sectionId, setSectionId] = useState('');
   const [questionText, setQuestionText] = useState('');
   const [options, setOptions] = useState([{ option_text: '', rating: 0 }]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [loadingSections, setLoadingSections] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setSectionId(sections.length > 0 ? sections[0].id : '');
+      setSectionId('');
       setQuestionText('');
       setOptions([{ option_text: '', rating: 0 }]);
       setError('');
       setModalVisible(true);
+      setLoadingSections(true);
+      // Fetch sections from API
+      const token = localStorage.getItem('adminToken');
+      axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/get-sections`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+        .then(res => {
+          if (res.data && Array.isArray(res.data.sections)) {
+            setSections(res.data.sections);
+            if (res.data.sections.length > 0) {
+              setSectionId(res.data.sections[0].id.toString());
+            }
+          } else {
+            setSections([]);
+          }
+        })
+        .catch(() => setSections([]))
+        .finally(() => setLoadingSections(false));
     } else {
       setModalVisible(false);
     }
-  }, [open, sections]);
+  }, [open]);
 
   const handleOptionChange = (idx, field, value) => {
     setOptions(opts =>
@@ -517,16 +593,24 @@ function AddQuestionModal({ open, sections, onClose, onAdd }) {
               </div>
               <div className="mb-6">
                 <label className="block text-gray-700 font-semibold mb-2">Section</label>
-                <select
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none transition bg-white"
-                  value={sectionId}
-                  onChange={e => setSectionId(e.target.value)}
-                  disabled={loading}
-                >
-                  {sections.map(section => (
-                    <option key={section.id} value={section.id}>{section.name}</option>
-                  ))}
-                </select>
+                {loadingSections ? (
+                  <div className="text-gray-500 text-sm py-2">Loading sections...</div>
+                ) : (
+                  <select
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none transition bg-white"
+                    value={sectionId}
+                    onChange={e => setSectionId(e.target.value)}
+                    disabled={loading || sections.length === 0}
+                  >
+                    {sections.length === 0 ? (
+                      <option value="">No sections available</option>
+                    ) : (
+                      sections.map(section => (
+                        <option key={section.id} value={section.id}>{section.name}</option>
+                      )))
+                    }
+                  </select>
+                )}
               </div>
               <div className="mb-6">
                 <label className="block text-gray-700 font-semibold mb-2">Question Text</label>
@@ -728,6 +812,9 @@ function QuestionsPage() {
       : 1
     ).toString();
     setSections(secs => [...secs, { id: newId, name: sectionName }]);
+
+    console.log(section)
+    setRefreshQuestions(r => r + 1); // <-- refresh questions after section add
   };
 
   // Add Question handler
@@ -925,7 +1012,6 @@ function QuestionsPage() {
       {/* Add Question Modal */}
       <AddQuestionModal
         open={addQuestionOpen}
-        sections={sections}
         onClose={() => setAddQuestionOpen(false)}
         onAdd={handleAddQuestion}
       />
