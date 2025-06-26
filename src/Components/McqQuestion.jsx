@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
 const McqQuestion = ({ question, onAnswerSelect, selectedOptions }) => {
+
   // Log on mount to check if props are received correctly
   useEffect(() => {
     console.log(`Rendering question ${question.question_id}`, {
@@ -46,6 +47,7 @@ const McqQuestion = ({ question, onAnswerSelect, selectedOptions }) => {
     return isSelected;
   };
   
+  
   return (
     <motion.div 
       className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-6 mb-6 border border-gray-100"
@@ -54,7 +56,7 @@ const McqQuestion = ({ question, onAnswerSelect, selectedOptions }) => {
       variants={containerVariants}
     >
       <h2 className="text-xl font-medium text-gray-800 mb-4">
-        {question.question_id}. {question.question_text}
+        {question.question_text}
       </h2>
       
       <motion.div className="space-y-3" variants={containerVariants}>

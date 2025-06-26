@@ -25,7 +25,7 @@ const SectionContainer = ({ section, onAnswerSelect, selectedOptions }) => {
           {section.section_name}
         </h1>
         <p className="text-blue-100 mt-2">
-          Section {section.section_id} - Please answer all questions below
+        Please answer all questions below
         </p>
       </motion.div>
       

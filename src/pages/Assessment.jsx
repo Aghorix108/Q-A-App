@@ -387,7 +387,9 @@ function Assessment() {
                           }}
                           whileHover={{ scale: 1.1 }}
                         >
-                          {index + 1}
+                         <div className="bg-white  w-2 h-2 rounded-[50%]">
+
+                         </div>
                         </motion.div>
                         <motion.div
                           className={`mt-1 text-xs font-medium ${
