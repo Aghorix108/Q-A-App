@@ -960,7 +960,9 @@ function QuestionsPage() {
         <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">
           Assessment Questions
         </h1>
-        <div className="flex items-center gap-3">
+       
+      </div>
+       <div className="flex mb-4 justify-end items-center gap-3">
           <button
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-800 rounded-lg font-medium shadow-sm hover:bg-gray-100 hover:border-blue-500 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
             onClick={() => setAddSectionOpen(true)}
@@ -1000,7 +1002,6 @@ function QuestionsPage() {
             </select>
           </div>
         </div>
-      </div>
 
       {/* Add Section Modal */}
       <AddSectionModal

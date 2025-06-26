@@ -21,7 +21,7 @@ const AdminLayout = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-auto bg-gray-100">
       {/* Sidebar */}
       <div 
         className={`${
@@ -142,7 +142,7 @@ const AdminLayout = () => {
       
       {/* Main content */}
       <div className={`flex-1 ${isSidebarOpen ? 'ml-64' : 'ml-20'} transition-all duration-300 ease-in-out`}>
-        <header className="bg-white shadow-sm py-4 px-6">
+        {/* <header className="bg-white shadow-sm py-4 px-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-800">Admin Dashboard</h2>
             {adminUser && (
@@ -152,7 +152,7 @@ const AdminLayout = () => {
               </div>
             )}
           </div>
-        </header>
+        </header> */}
         <main className="p-6">
           <Outlet />
         </main>
