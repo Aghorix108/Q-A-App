@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Assessment from './pages/Assessment';
 import Login from './pages/Login';
@@ -11,6 +11,7 @@ import DashboardHome from './pages/DashboardHome';
 import SubmissionsPage from './pages/SubmissionsPage';
 import QuestionsPage from './pages/QuestionsPage';
 import UserPage from './pages/UserPage';
+import ValidationComponent from './Components/validationComponent';
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -30,33 +31,56 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
+  const [validated, setValidated] = useState(!!localStorage.getItem("roll_no"));
+
+  useEffect(() => {
+    // Listen for roll_no being set by ValidationComponent (in case of async)
+    const checkRollNo = () => {
+      if (localStorage.getItem("roll_no")) setValidated(true);
+    };
+    window.addEventListener("storage", checkRollNo);
+    return () => window.removeEventListener("storage", checkRollNo);
+  }, []);
+
+  // Add this effect to check localStorage on every render
+  useEffect(() => {
+    if (!validated && localStorage.getItem("roll_no")) {
+      setValidated(true);
+    }
+  });
+
   return (
     <AuthProvider>
       <Router>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/" element={
-            <>
-              <Navbar />
-              <Assessment />
-            </>
-          } />
-          <Route path="/admin-login" element={<Login />} />
+        {/* Validation must be inside Router for useNavigate to work */}
+        {!validated ? (
+          <ValidationComponent />
+        ) : (
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={
+              <>
+                <Navbar />
+                <Assessment />
+              </>
+            } />
+            <Route path="/admin-login" element={<Login />} />
 
-          {/* Protected admin routes with admin layout */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <AdminLayout />
-            </ProtectedRoute>
-          }>
-            <Route index element={<DashboardHome />} />
-            <Route path="submissions" element={<SubmissionsPage />} />
-            <Route path="questions" element={<QuestionsPage />} />
-            <Route path="users" element={<UserPage />} />
-          </Route>
+            {/* Protected admin routes with admin layout */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<DashboardHome />} />
+              <Route path="submissions" element={<SubmissionsPage />} />
+              <Route path="questions" element={<QuestionsPage />} />
+              <Route path="users" element={<UserPage />} />
+            </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        )}
       </Router>
     </AuthProvider>
   );
