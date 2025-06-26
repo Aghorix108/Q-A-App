@@ -96,9 +96,7 @@ function Assessment() {
         // Explicitly check for existence of the question ID in the selections
         const hasAnswer = selectedOptions[qId] !== undefined;
         console.log(
-          `Question ${qId}: ${
-            hasAnswer ? "answered" : "not answered"
-          }`
+          `Question ${qId}: ${hasAnswer ? "answered" : "not answered"}`
         );
         return hasAnswer;
       });
@@ -133,21 +131,31 @@ function Assessment() {
     try {
       setLoading(true);
 
-      // Format answers for the API
+      // Format answers for the API - include both option ID and rating
       const finalAnswers = Object.entries(selectedOptions).map(
         ([questionId, optionId]) => {
+          // Find the question and option to get the rating
+          const question = questionData
+            .flatMap((section) => section.questions)
+            .find((q) => q.question_id === parseInt(questionId));
+
+          const selectedOption = question?.options.find(
+            (opt) => opt.option_id === optionId
+          );
+
           return {
             question_id: parseInt(questionId),
-            selected_option_id: optionId,
+            option_id: optionId,
+            rating: selectedOption?.rating || 0,
           };
         }
       );
 
-      console.log("Submitting answers to API");
+      console.log("Submitting answers to API with ratings:", finalAnswers);
 
       // Submit the data to the API
       await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/candidate/submit`,
+        `${import.meta.env.VITE_API_BASE_URL}/candidate/submit-responses`,
         { answers: finalAnswers },
         {
           headers: {
@@ -466,7 +474,9 @@ function Assessment() {
                   whileHover={currentSectionComplete ? { scale: 1.03 } : {}}
                   whileTap={currentSectionComplete ? { scale: 0.98 } : {}}
                 >
-                  {currentSectionComplete ? "Next →" : "Please answer all questions →"}
+                  {currentSectionComplete
+                    ? "Next →"
+                    : "Please answer all questions →"}
                 </motion.button>
               ) : (
                 <motion.button
@@ -492,4 +502,3 @@ function Assessment() {
 }
 
 export default Assessment;
-
