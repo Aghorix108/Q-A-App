@@ -10,6 +10,7 @@ import AdminLayout from './components/AdminLayout';
 import DashboardHome from './pages/DashboardHome';
 import SubmissionsPage from './pages/SubmissionsPage';
 import QuestionsPage from './pages/QuestionsPage';
+import UserPage from './pages/UserPage';
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -51,6 +52,7 @@ function App() {
             <Route index element={<DashboardHome />} />
             <Route path="submissions" element={<SubmissionsPage />} />
             <Route path="questions" element={<QuestionsPage />} />
+            <Route path="users" element={<UserPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
